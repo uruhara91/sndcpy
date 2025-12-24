@@ -3,6 +3,13 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 31
 
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
+    ndkVersion "25.1.8937393"
+
     defaultConfig {
         applicationId "com.rom1v.sndcpy"
         minSdkVersion 29
