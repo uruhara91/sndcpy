@@ -15,8 +15,12 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            signingConfig signingConfigs.debug
         }
     }
 }
@@ -24,7 +28,6 @@ android {
 if (project.hasProperty("SNDCPY_STORE_FILE")) {
     android.signingConfigs {
         release {
-            // to be defined in ~/.gradle/gradle.properties
             storeFile file(RELEASE_STORE_FILE)
             storePassword RELEASE_STORE_PASSWORD
             keyAlias RELEASE_KEY_ALIAS
