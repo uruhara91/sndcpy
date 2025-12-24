@@ -1,0 +1,26 @@
+name: sndcpy
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+          
+      - name: Build and Rename APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+          mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/sndcpy.apk
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sndcpy
+          path: app/build/outputs/apk/release/sndcpy.apk
