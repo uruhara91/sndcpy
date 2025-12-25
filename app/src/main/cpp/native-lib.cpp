@@ -9,7 +9,7 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
 // Buffer kecil untuk low latency
-#define SAMPLES_PER_FRAME 128 
+#define SAMPLES_PER_FRAME 96 
 
 AAudioStream *stream = nullptr;
 
