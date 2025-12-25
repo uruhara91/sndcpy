@@ -8,7 +8,7 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-#define SAMPLES_PER_FRAME 96 
+#define SAMPLES_PER_FRAME 128 
 
 AAudioStream *stream = nullptr;
 
@@ -41,12 +41,12 @@ Java_com_rom1v_sndcpy_RecordService_nativeReadAudio(JNIEnv *env, jobject thiz) {
     if (stream == nullptr) return nullptr;
 
     int16_t buffer[SAMPLES_PER_FRAME * 2];
-    int32_t framesRead = AAudioStream_read(stream, buffer, SAMPLES_PER_FRAME, 0);
+    // Tambahkan timeout kecil (misal 10ms) jangan 0, biar Java loop-nya lebih stabil
+    int32_t framesRead = AAudioStream_read(stream, buffer, SAMPLES_PER_FRAME, 10000000); 
 
     if (framesRead > 0) {
-        int byteLength = framesRead * 2 * sizeof(int16_t);
-        jbyteArray result = env->NewByteArray(byteLength);
-        env->SetByteArrayRegion(result, 0, byteLength, (jbyte*)buffer);
+        jbyteArray result = env->NewByteArray(framesRead * 4); // 2 channels * 2 bytes
+        env->SetByteArrayRegion(result, 0, framesRead * 4, (jbyte*)buffer);
         return result;
     }
     return nullptr;
