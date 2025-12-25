@@ -18,29 +18,23 @@ Java_com_rom1v_sndcpy_RecordService_nativeStartCapture(JNIEnv *env, jobject thiz
     AAudioStreamBuilder *builder;
     AAudio_createStreamBuilder(&builder);
 
-    // Konfigurasi Stream
     AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_INPUT);
     AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
-    AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE); // Paksa jalur cepat
+    AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE); 
     AAudioStreamBuilder_setFormat(builder, AAUDIO_FORMAT_PCM_I16);
     AAudioStreamBuilder_setChannelCount(builder, 2);
-    AAudioStreamBuilder_setSampleRate(builder, 48000); // Standard Android Native Rate
+    AAudioStreamBuilder_setSampleRate(builder, 48000); 
 
-    // Buka stream
     aaudio_result_t result = AAudioStreamBuilder_openStream(builder, &stream);
     if (result != AAUDIO_OK) {
         LOGE("Gagal membuka AAudio stream: %s", AAudio_convertResultToText(result));
     } else {
-        // Cek apakah dapet MMAP
+        // Sekarang ini legal di API 30+
         bool isMmap = AAudioStream_isMMapUsed(stream);
-        LOGI("AAudio Stream Berhasil Dibuka. Jalur MMAP: %s", isMmap ? "YA" : "TIDAK (Legacy)");
+        LOGI("AAudio Berhasil! Jalur MMAP: %s", isMmap ? "AKTIF" : "TIDAK (Legacy)");
         
-        result = AAudioStream_requestStart(stream);
-        if (result != AAUDIO_OK) {
-            LOGE("Gagal memulai AAudio stream: %s", AAudio_convertResultToText(result));
-        }
+        AAudioStream_requestStart(stream);
     }
-    
     AAudioStreamBuilder_delete(builder);
 }
 
