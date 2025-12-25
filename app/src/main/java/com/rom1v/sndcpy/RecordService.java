@@ -19,32 +19,29 @@ import android.os.IBinder;
 import android.os.Message;
 import android.util.Log;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
 public class RecordService extends Service {
-
     private static final String TAG = "sndcpy";
     private static final String CHANNEL_ID = "sndcpy";
     private static final int NOTIFICATION_ID = 1;
-
     private static final String ACTION_RECORD = "com.rom1v.sndcpy.RECORD";
     private static final String ACTION_STOP = "com.rom1v.sndcpy.STOP";
     private static final String EXTRA_MEDIA_PROJECTION_DATA = "mediaProjectionData";
     private static final int MSG_CONNECTION_ESTABLISHED = 1;
     private static final String SOCKET_NAME = "sndcpy";
 
-    // Native Methods
     static {
         System.loadLibrary("native-lib");
     }
+
+    // Native Methods - Harus sesuai dengan native-lib.cpp
     private native void nativeStartCapture(MediaProjection projection);
     private native byte[] nativeReadAudio();
     private native void nativeStopCapture();
 
     private final Handler handler = new ConnectionHandler(this);
-    private MediaProjectionManager mediaProjectionManager;
     private MediaProjection mediaProjection;
     private Thread recorderThread;
 
@@ -58,22 +55,21 @@ public class RecordService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_NONE);
-        getNotificationManager().createNotificationChannel(channel);
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Audio Capture", NotificationManager.IMPORTANCE_LOW);
+        getSystemService(NotificationManager.class).createNotificationChannel(channel);
         startForeground(NOTIFICATION_ID, createNotification(false), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (ACTION_STOP.equals(intent.getAction())) {
+        if (intent == null || ACTION_STOP.equals(intent.getAction())) {
             stopSelf();
             return START_NOT_STICKY;
         }
-        if (isRunning()) return START_NOT_STICKY;
 
         Intent data = intent.getParcelableExtra(EXTRA_MEDIA_PROJECTION_DATA);
-        mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
-        mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, data);
+        MediaProjectionManager mpManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        mediaProjection = mpManager.getMediaProjection(Activity.RESULT_OK, data);
         
         if (mediaProjection != null) {
             startRecording();
@@ -88,13 +84,13 @@ public class RecordService extends Service {
             try (LocalSocket socket = connect()) {
                 handler.sendEmptyMessage(MSG_CONNECTION_ESTABLISHED);
                 
-                // Inisialisasi Native Audio dengan MediaProjection
+                // Panggil Native AAudio
                 nativeStartCapture(mediaProjection);
 
                 try (OutputStream output = socket.getOutputStream()) {
                     while (!Thread.currentThread().isInterrupted()) {
                         byte[] buffer = nativeReadAudio();
-                        if (buffer != null && buffer.length > 0) {
+                        if (buffer != null) {
                             output.write(buffer);
                         }
                     }
@@ -103,13 +99,14 @@ public class RecordService extends Service {
                 Log.e(TAG, "Socket error", e);
             } finally {
                 nativeStopCapture();
+                if (mediaProjection != null) mediaProjection.stop();
                 stopSelf();
             }
         });
         recorderThread.start();
     }
 
-    private static LocalSocket connect() throws IOException {
+    private LocalSocket connect() throws IOException {
         LocalServerSocket localServerSocket = new LocalServerSocket(SOCKET_NAME);
         try {
             return localServerSocket.accept();
@@ -119,41 +116,32 @@ public class RecordService extends Service {
     }
 
     private Notification createNotification(boolean established) {
-        Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle(getString(R.string.app_name))
-                .setContentText(getText(established ? R.string.notification_forwarding : R.string.notification_waiting))
-                .setSmallIcon(R.drawable.ic_album_black_24dp)
-                .addAction(createStopAction());
-        return builder.build();
-    }
-
-    private Notification.Action createStopAction() {
         Intent stopIntent = new Intent(this, RecordService.class).setAction(ACTION_STOP);
-        PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
-        return new Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_close_24dp), getString(R.string.action_stop), stopPendingIntent).build();
+        PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE);
+
+        return new Notification.Builder(this, CHANNEL_ID)
+                .setContentTitle("Sndcpy Audio")
+                .setContentText(established ? "Forwarding audio..." : "Waiting for connection...")
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .addAction(new Notification.Action.Builder(null, "STOP", stopPendingIntent).build())
+                .build();
     }
 
-    private boolean isRunning() { return recorderThread != null; }
-
-    @Override
-    public void onDestroy() {
+    @Override public void onDestroy() {
+        if (recorderThread != null) recorderThread.interrupt();
         super.onDestroy();
-        if (recorderThread != null) {
-            recorderThread.interrupt();
-            recorderThread = null;
-        }
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }
-    private NotificationManager getNotificationManager() { return (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE); }
 
     private static final class ConnectionHandler extends Handler {
-        private RecordService service;
+        private final RecordService service;
         ConnectionHandler(RecordService service) { this.service = service; }
         @Override
         public void handleMessage(Message message) {
-            if (message.what == MSG_CONNECTION_ESTABLISHED && service.isRunning()) {
-                service.getNotificationManager().notify(NOTIFICATION_ID, service.createNotification(true));
+            if (message.what == MSG_CONNECTION_ESTABLISHED) {
+                NotificationManager nm = (NotificationManager) service.getSystemService(NOTIFICATION_SERVICE);
+                nm.notify(NOTIFICATION_ID, service.createNotification(true));
             }
         }
     }
