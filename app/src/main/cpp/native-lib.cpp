@@ -8,7 +8,6 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-// Buffer kecil untuk low latency
 #define SAMPLES_PER_FRAME 96 
 
 AAudioStream *stream = nullptr;
@@ -29,9 +28,8 @@ Java_com_rom1v_sndcpy_RecordService_nativeStartCapture(JNIEnv *env, jobject thiz
     if (result != AAUDIO_OK) {
         LOGE("Gagal membuka AAudio stream: %s", AAudio_convertResultToText(result));
     } else {
-        // Sekarang ini legal di API 30+
-        bool isMmap = AAudioStream_isMMapUsed(stream);
-        LOGI("AAudio Berhasil! Jalur MMAP: %s", isMmap ? "AKTIF" : "TIDAK (Legacy)");
+        // Cukup log ini saja, jangan pakai AAudioStream_isMMapUsed
+        LOGI("AAudio Stream Berhasil Dibuka!");
         
         AAudioStream_requestStart(stream);
     }
@@ -43,7 +41,6 @@ Java_com_rom1v_sndcpy_RecordService_nativeReadAudio(JNIEnv *env, jobject thiz) {
     if (stream == nullptr) return nullptr;
 
     int16_t buffer[SAMPLES_PER_FRAME * 2];
-    // Timeout 0 agar non-blocking
     int32_t framesRead = AAudioStream_read(stream, buffer, SAMPLES_PER_FRAME, 0);
 
     if (framesRead > 0) {
