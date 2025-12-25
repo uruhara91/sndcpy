@@ -8,9 +8,7 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-#define SAMPLES_PER_FRAME 128 
-
-AAudioStream *stream = nullptr;
+#define SAMPLES_PER_FRAME 192 
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_rom1v_sndcpy_RecordService_nativeStartCapture(JNIEnv *env, jobject thiz, jobject projection) {
@@ -19,10 +17,13 @@ Java_com_rom1v_sndcpy_RecordService_nativeStartCapture(JNIEnv *env, jobject thiz
 
     AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_INPUT);
     AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
-    AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE); 
+    AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE);
     AAudioStreamBuilder_setFormat(builder, AAUDIO_FORMAT_PCM_I16);
     AAudioStreamBuilder_setChannelCount(builder, 2);
-    AAudioStreamBuilder_setSampleRate(builder, 48000); 
+    AAudioStreamBuilder_setSampleRate(builder, 48000);
+    
+    // Paksa pakai Camcorder agar tidak diproses filter noise Voice Recognition
+    AAudioStreamBuilder_setInputPreset(builder, AAUDIO_INPUT_PRESET_CAMCORDER); 
 
     aaudio_result_t result = AAudioStreamBuilder_openStream(builder, &stream);
     if (result != AAUDIO_OK) {
