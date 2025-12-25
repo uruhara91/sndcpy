@@ -4,7 +4,7 @@
 #include <vector>
 
 // Buffer kecil untuk low latency (FPS Game optimized)
-#define SAMPLES_PER_FRAME 192 
+#define SAMPLES_PER_FRAME 128 
 
 AAudioStream *stream = nullptr;
 
